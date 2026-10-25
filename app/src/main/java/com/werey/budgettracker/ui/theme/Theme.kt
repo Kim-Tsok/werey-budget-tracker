@@ -16,5 +16,9 @@ private val WereyScheme = darkColorScheme(
 
 @Composable
 fun WereyBudgetTrackerTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = WereyScheme, typography = Typography, content = content)
+    MaterialTheme(
+        colorScheme = WereyScheme,
+        typography = Typography,
+        content = content
+    )
 }

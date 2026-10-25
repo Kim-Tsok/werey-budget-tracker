@@ -2,120 +2,1089 @@ package com.werey.budgettracker
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.DirectionsBus
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Insights
+import androidx.compose.material.icons.outlined.Autorenew
+import androidx.compose.material.icons.outlined.PieChartOutline
+import androidx.compose.material.icons.outlined.Savings
+import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
+import androidx.compose.material.icons.automirrored.outlined.TrendingDown
+import androidx.compose.material.icons.outlined.Restaurant
+import androidx.compose.material.icons.outlined.SimCard
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.Insights
+import androidx.compose.material.icons.rounded.Payments
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 import com.werey.budgettracker.ui.theme.WereyBudgetTrackerTheme
 
-private val Bg = Color(0xFF100D12); private val Card = Color(0xFF1B171E)
-private val Plum = Color(0xFFD0A9FB); private val Ink = Color(0xFF3B2A52)
-private val Text = Color(0xFFF4EEF6); private val Muted = Color(0xFFC9BFCC)
-private val Green = Color(0xFFB9EF9B); private val Outline = Color(0xFF51485A)
-private enum class Page { HOME, ADD }; private enum class Kind { FOOD, BUS, DATA, INCOME }
-private data class Tx(val title:String, val category:String, val value:String, val kind:Kind, val income:Boolean=false)
+private val AppBackground = Color(0xFF100D12)
+private val AppSurface = Color(0xFF1B171E)
+private val AppSurfaceRaised = Color(0xFF211C25)
+private val AppOutline = Color(0xFF51485A)
+private val Lavender = Color(0xFFD0A9FB)
+private val DeepPlum = Color(0xFF3B2A52)
+private val PrimaryText = Color(0xFFF4EEF6)
+private val SecondaryText = Color(0xFFC9BFCC)
+private val IncomeGreen = Color(0xFFB9EF9B)
+
+private enum class Page { Home, Add }
+private enum class Kind { Food, Transport, Data, Income }
+
+private data class Transaction(
+    val title: String,
+    val category: String,
+    val value: String,
+    val kind: Kind,
+    val income: Boolean = false,
+)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState); enableEdgeToEdge()
-        setContent { WereyBudgetTrackerTheme { App() } }
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+        setContent { WereyBudgetTrackerTheme { BudgetApp() } }
     }
 }
 
-@Composable private fun App() {
-    var page by remember { mutableStateOf(Page.HOME) }; var requested by remember { mutableStateOf<Kind?>(null) }
-    var entries by remember { mutableStateOf(listOf(Tx("Chicken & rice","Food","−₦3,200",Kind.FOOD), Tx("Bus to campus","Transport","−₦700",Kind.BUS), Tx("Salary","Income","+₦85,000",Kind.INCOME,true))) }
-    fun open(kind:Kind?) { requested=kind; page=Page.ADD }
-    Box(Modifier.fillMaxSize().background(Bg)) {
-        if(page==Page.HOME) Home(entries, ::open)
-        else Add(requested, { page=Page.HOME }) { entries=listOf(it)+entries; page=Page.HOME }
+@Composable
+private fun BudgetApp() {
+    var page by rememberSaveable { mutableStateOf(Page.Home) }
+    var selectedDestination by rememberSaveable { mutableIntStateOf(0) }
+    var requestedKind by remember { mutableStateOf<Kind?>(null) }
+    var transactions by remember {
+        mutableStateOf(
+            listOf(
+                Transaction("Chicken & rice", "Food", "−₦3,200", Kind.Food),
+                Transaction("Bus to campus", "Transport", "−₦700", Kind.Transport),
+                Transaction("Salary", "Income", "+₦85,000", Kind.Income, income = true),
+            )
+        )
+    }
+    val spatial = spring<IntOffset>(dampingRatio = .76f, stiffness = 360f)
+    val expressiveScale = spring<Float>(dampingRatio = .72f, stiffness = 320f)
+    val effects = tween<Float>(durationMillis = 160, easing = FastOutSlowInEasing)
+
+    BackHandler(enabled = page == Page.Add) { page = Page.Home }
+
+    Surface(modifier = Modifier.fillMaxSize(), color = AppBackground) {
+        AnimatedContent(
+            targetState = page,
+            modifier = Modifier.fillMaxSize().background(AppBackground),
+            transitionSpec = {
+                if (targetState == Page.Add) {
+                    (
+                        scaleIn(
+                            initialScale = .06f,
+                            transformOrigin = TransformOrigin(.92f, .96f),
+                            animationSpec = expressiveScale,
+                        ) +
+                            slideInVertically(animationSpec = spatial) { it / 4 } +
+                            fadeIn(animationSpec = effects)
+                        ) togetherWith fadeOut(animationSpec = tween(70))
+                } else {
+                    (fadeIn(animationSpec = effects) + scaleIn(initialScale = .96f, animationSpec = expressiveScale)) togetherWith
+                        (
+                            scaleOut(
+                                targetScale = .06f,
+                                transformOrigin = TransformOrigin(.92f, .96f),
+                                animationSpec = expressiveScale,
+                            ) +
+                                slideOutVertically(animationSpec = spatial) { it / 4 } +
+                                fadeOut(animationSpec = tween(100))
+                            )
+                }.using(SizeTransform(clip = false))
+            },
+            label = "screen transition",
+        ) { target ->
+            when (target) {
+                Page.Home -> HomeScreen(
+                    transactions = transactions,
+                    selectedDestination = selectedDestination,
+                    onDestinationSelected = { selectedDestination = it },
+                    onAdd = { kind ->
+                        requestedKind = kind
+                        page = Page.Add
+                    },
+                )
+                Page.Add -> AddTransactionScreen(
+                    initialKind = requestedKind,
+                    onBack = { page = Page.Home },
+                    onSave = {
+                        transactions = listOf(it) + transactions
+                        page = Page.Home
+                    },
+                )
+            }
+        }
     }
 }
 
-@Composable private fun Home(entries:List<Tx>, open:(Kind?)->Unit) {
-    LazyColumn(Modifier.fillMaxSize(), contentPadding=PaddingValues(22.dp,44.dp,22.dp,110.dp)) {
+@Composable
+private fun HomeScreen(
+    transactions: List<Transaction>,
+    selectedDestination: Int,
+    onDestinationSelected: (Int) -> Unit,
+    onAdd: (Kind?) -> Unit,
+) {
+    Scaffold(
+        containerColor = AppBackground,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        bottomBar = {
+            HomeBottomBar(
+                selectedDestination = selectedDestination,
+                onDestinationSelected = onDestinationSelected,
+                onAdd = onAdd,
+            )
+        },
+    ) { scaffoldPadding ->
+        AnimatedContent(
+            targetState = selectedDestination,
+            modifier = Modifier.fillMaxSize(),
+            transitionSpec = {
+                val forward = targetState > initialState
+                val enterDirection = if (forward) 1 else -1
+                (slideInHorizontally(
+                    animationSpec = spring(dampingRatio = .82f, stiffness = 420f),
+                    initialOffsetX = { it * enterDirection / 5 },
+                ) + fadeIn(animationSpec = tween(160))) togetherWith
+                    (slideOutHorizontally(
+                        animationSpec = spring(dampingRatio = .88f, stiffness = 520f),
+                        targetOffsetX = { -it * enterDirection / 7 },
+                    ) + fadeOut(animationSpec = tween(110)))
+            },
+            label = "bottom destination",
+        ) { destination ->
+            when (destination) {
+                1 -> PlanContent(scaffoldPadding)
+                2 -> InsightsContent(scaffoldPadding)
+                else -> DashboardContent(scaffoldPadding, transactions, onAdd)
+            }
+        }
+    }
+}
+
+@Composable
+private fun DashboardContent(
+    scaffoldPadding: PaddingValues,
+    transactions: List<Transaction>,
+    onAdd: (Kind?) -> Unit,
+) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(scaffoldPadding)
+                .statusBarsPadding(),
+            contentPadding = PaddingValues(start = 22.dp, end = 22.dp, top = 16.dp, bottom = 20.dp),
+        ) {
+            item {
+                HomeHeader()
+                Spacer(Modifier.height(22.dp))
+                BalanceCard()
+                Spacer(Modifier.height(22.dp))
+                SectionTitle("Quick add")
+                Spacer(Modifier.height(14.dp))
+                QuickAddRow(onAdd)
+                Spacer(Modifier.height(28.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    SectionTitle("Today")
+                    Text(
+                        text = "See all",
+                        color = Lavender,
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                }
+                Spacer(Modifier.height(12.dp))
+            }
+            items(transactions, key = { it.title + it.value }) { transaction ->
+                TransactionRow(transaction)
+                Spacer(Modifier.height(8.dp))
+            }
+        }
+}
+
+@Composable
+private fun HomeHeader() {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column {
+            Text(
+                text = "Good morning, Kim",
+                color = PrimaryText,
+                style = MaterialTheme.typography.headlineSmall,
+            )
+            Spacer(Modifier.height(3.dp))
+            Text(
+                text = "Your money, clearly planned.",
+                color = SecondaryText,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+        Surface(
+            modifier = Modifier.size(48.dp),
+            shape = CircleShape,
+            color = Lavender,
+            contentColor = DeepPlum,
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Text("K", style = MaterialTheme.typography.titleMedium)
+            }
+        }
+    }
+}
+
+@Composable
+private fun BalanceCard() {
+    var progressTarget by remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(Unit) { progressTarget = .63f }
+    val progress by animateFloatAsState(
+        targetValue = progressTarget,
+        animationSpec = spring(dampingRatio = .78f, stiffness = 180f),
+        label = "available budget progress",
+    )
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(30.dp),
+        colors = CardDefaults.cardColors(containerColor = Lavender, contentColor = DeepPlum),
+    ) {
+        Column(Modifier.padding(horizontal = 22.dp, vertical = 20.dp)) {
+            Text("AVAILABLE TO SPEND", style = MaterialTheme.typography.labelSmall)
+            Spacer(Modifier.height(8.dp))
+            Text("₦42,550", style = MaterialTheme.typography.displaySmall)
+            Spacer(Modifier.height(2.dp))
+            Text("until 30 October", style = MaterialTheme.typography.bodyMedium)
+            Spacer(Modifier.height(16.dp))
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(10.dp)
+                    .clip(CircleShape)
+                    .background(DeepPlum)
+            ) {
+                Box(
+                    Modifier
+                        .fillMaxWidth(progress)
+                        .fillMaxHeight()
+                        .clip(CircleShape)
+                        .background(IncomeGreen)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun QuickAddRow(onAdd: (Kind?) -> Unit) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        QuickAddCard("Food", "₦1,200", Kind.Food, Modifier.weight(1f), onAdd)
+        QuickAddCard("Transport", "₦500", Kind.Transport, Modifier.weight(1f), onAdd)
+        QuickAddCard("Data", "₦2,000", Kind.Data, Modifier.weight(1f), onAdd)
+    }
+}
+
+@Composable
+private fun QuickAddCard(
+    title: String,
+    amount: String,
+    kind: Kind,
+    modifier: Modifier,
+    onAdd: (Kind?) -> Unit,
+) {
+    Card(
+        onClick = { onAdd(kind) },
+        modifier = modifier.height(82.dp),
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(containerColor = AppSurface),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Icon(kind.icon(), contentDescription = null, tint = Lavender, modifier = Modifier.size(20.dp))
+            Column {
+                Text(title, color = PrimaryText, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, maxLines = 1)
+                Text(amount, color = SecondaryText, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+            }
+        }
+    }
+}
+
+@Composable
+private fun TransactionRow(transaction: Transaction) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        color = AppSurfaceRaised,
+        border = BorderStroke(1.dp, AppOutline),
+    ) {
+        Row(
+            modifier = Modifier.height(64.dp).padding(horizontal = 13.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Surface(
+                modifier = Modifier.size(40.dp),
+                shape = CircleShape,
+                color = DeepPlum,
+                contentColor = Lavender,
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(transaction.kind.icon(), contentDescription = null, modifier = Modifier.size(20.dp))
+                }
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(transaction.title, color = PrimaryText, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                Text(transaction.category, color = SecondaryText, style = MaterialTheme.typography.labelSmall)
+            }
+            Text(
+                transaction.value,
+                color = if (transaction.income) IncomeGreen else PrimaryText,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+    }
+}
+
+@Composable
+private fun PlanContent(scaffoldPadding: PaddingValues) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().padding(scaffoldPadding).statusBarsPadding(),
+        contentPadding = PaddingValues(start = 22.dp, end = 22.dp, top = 16.dp, bottom = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
         item {
-            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                Column { Text("Good morning, Kim",color=Text,fontSize=25.sp,fontWeight=FontWeight.Bold); Spacer(Modifier.height(4.dp)); Text("Your money, clearly planned.",color=Muted,fontSize=13.sp) }
-                Box(Modifier.size(46.dp).clip(CircleShape).background(Plum),contentAlignment=Alignment.Center) { Text("K",color=Ink,fontSize=16.sp,fontWeight=FontWeight.Bold) }
+            DestinationHeader("Plan", "October 2026")
+            Spacer(Modifier.height(22.dp))
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(30.dp),
+                colors = CardDefaults.cardColors(containerColor = Lavender, contentColor = DeepPlum),
+            ) {
+                Column(Modifier.padding(22.dp)) {
+                    Text("MONTHLY BUDGET", style = MaterialTheme.typography.labelSmall)
+                    Spacer(Modifier.height(8.dp))
+                    Text("₦120,000", style = MaterialTheme.typography.displaySmall)
+                    Spacer(Modifier.height(4.dp))
+                    Text("₦42,550 still available", style = MaterialTheme.typography.bodyMedium)
+                }
             }
-            Spacer(Modifier.height(22.dp)); Balance(); Spacer(Modifier.height(20.dp)); Heading("Quick add"); Spacer(Modifier.height(14.dp))
-            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)) {
-                Quick("Food","₦1,200",Kind.FOOD,Modifier.weight(1f),open); Quick("Transport","₦500",Kind.BUS,Modifier.weight(1f),open); Quick("Data","₦2,000",Kind.DATA,Modifier.weight(1f),open)
-            }
-            Spacer(Modifier.height(26.dp)); Row(Modifier.fillMaxWidth(),Arrangement.SpaceBetween) { Heading("Today"); Text("See all",color=Plum,fontSize=12.sp,fontWeight=FontWeight.Bold) }; Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(24.dp))
+            SectionTitle("Plan your money")
+            Spacer(Modifier.height(12.dp))
         }
-        items(entries.size) { i -> Entry(entries[i]); if(i<entries.lastIndex) Spacer(Modifier.height(8.dp)) }
-    }
-    Row(Modifier.fillMaxWidth().padding(22.dp,0.dp,22.dp,30.dp).height(64.dp),horizontalArrangement=Arrangement.spacedBy(12.dp),verticalAlignment=Alignment.CenterVertically) {
-        Row(Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(32.dp)).background(Card).padding(horizontal=8.dp),horizontalArrangement=Arrangement.SpaceEvenly,verticalAlignment=Alignment.CenterVertically) {
-            Nav("⌂","Home",true); Nav("▱","Plan",false); Nav("⌁","Insights",false)
+        item { PlanMenuCard(Icons.Outlined.PieChartOutline, "Budgets", "4 category limits", "₦77,450 used") }
+        item { PlanMenuCard(Icons.Outlined.Savings, "Savings goals", "Laptop fund", "68%") }
+        item { PlanMenuCard(Icons.Outlined.Autorenew, "Recurring payments", "3 payments this month", "₦12,800") }
+        item {
+            Spacer(Modifier.height(12.dp))
+            SectionTitle("Category limits")
+            Spacer(Modifier.height(12.dp))
+            BudgetProgressRow("Food", "₦18,000 of ₦25,000", .72f, Icons.Outlined.Restaurant)
+            Spacer(Modifier.height(10.dp))
+            BudgetProgressRow("Transport", "₦9,300 of ₦15,000", .62f, Icons.Outlined.DirectionsBus)
+            Spacer(Modifier.height(10.dp))
+            BudgetProgressRow("Data", "₦6,000 of ₦10,000", .60f, Icons.Outlined.SimCard)
         }
-        Box(Modifier.size(56.dp).clip(CircleShape).background(Plum).clickable(role=Role.Button){open(null)}.semantics{contentDescription="Add transaction"},contentAlignment=Alignment.Center) { Text("+",color=Ink,fontSize=31.sp) }
     }
-}
-@Composable private fun Balance() = Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(Plum).padding(22.dp,21.dp)) {
-    Text("AVAILABLE TO SPEND",color=Ink,fontSize=11.sp,fontWeight=FontWeight.Bold); Spacer(Modifier.height(10.dp)); Text("₦42,550",color=Ink,fontSize=39.sp,fontWeight=FontWeight.ExtraBold)
-    Spacer(Modifier.height(5.dp)); Text("until 30 October",color=Ink,fontSize=13.sp); Spacer(Modifier.height(16.dp))
-    Row(Modifier.fillMaxWidth().height(10.dp).clip(CircleShape).background(Ink)) { Spacer(Modifier.fillMaxWidth(.63f).fillMaxHeight().clip(CircleShape).background(Green)) }
-}
-@Composable private fun Quick(title:String,value:String,kind:Kind,modifier:Modifier,open:(Kind?)->Unit) = Column(modifier.clip(RoundedCornerShape(22.dp)).background(Card).clickable(role=Role.Button){open(kind)}.padding(16.dp)) {
-    Symbol(kind,Plum,20.sp); Spacer(Modifier.height(8.dp)); Text(title,color=Text,fontSize=12.sp,fontWeight=FontWeight.Bold,maxLines=1); Spacer(Modifier.height(3.dp)); Text(value,color=Muted,fontSize=11.sp,maxLines=1)
-}
-@Composable private fun Entry(tx:Tx) = Row(Modifier.fillMaxWidth().height(64.dp).clip(RoundedCornerShape(20.dp)).background(Card).padding(horizontal=13.dp),verticalAlignment=Alignment.CenterVertically) {
-    Box(Modifier.size(40.dp).clip(CircleShape).background(Ink),contentAlignment=Alignment.Center) { Symbol(tx.kind,Plum,18.sp) }
-    Spacer(Modifier.width(12.dp)); Column(Modifier.weight(1f)) { Text(tx.title,color=Text,fontSize=13.sp,fontWeight=FontWeight.Bold); Text(tx.category,color=Muted,fontSize=11.sp) }
-    Text(tx.value,color=if(tx.income)Green else Text,fontSize=14.sp,fontWeight=FontWeight.Bold)
-}
-@Composable private fun Nav(icon:String,label:String,selected:Boolean) = Column(horizontalAlignment=Alignment.CenterHorizontally) {
-    Box(Modifier.size(56.dp,30.dp).clip(RoundedCornerShape(20.dp)).background(if(selected)Ink else Color.Transparent),contentAlignment=Alignment.Center) { Text(icon,color=if(selected)Plum else Muted,fontSize=18.sp) }
-    Text(label,color=if(selected)Plum else Muted,fontSize=9.sp,fontWeight=if(selected)FontWeight.Bold else FontWeight.Normal)
 }
 
-@Composable private fun Add(initial:Kind?,back:()->Unit,save:(Tx)->Unit) {
-    var income by remember { mutableStateOf(initial==Kind.INCOME) }; var amount by remember { mutableStateOf(amountFor(initial)) }
-    val title=if(income)"Salary" else when(initial){Kind.BUS->"Bus to campus";Kind.DATA->"Mobile data";else->"Lunch and drink"}
-    val category=if(income)"Income" else if(initial==Kind.BUS)"Transport" else "Food"
-    Column(Modifier.fillMaxSize().padding(22.dp,44.dp,22.dp,26.dp)) {
-        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-            Circle("‹","Back",back); Text("Add transaction",Modifier.weight(1f),color=Text,textAlign=TextAlign.Center,fontSize=21.sp,fontWeight=FontWeight.Bold); Spacer(Modifier.size(48.dp))
+@Composable
+private fun InsightsContent(scaffoldPadding: PaddingValues) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().padding(scaffoldPadding).statusBarsPadding(),
+        contentPadding = PaddingValues(start = 22.dp, end = 22.dp, top = 16.dp, bottom = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        item {
+            DestinationHeader("Insights", "This month")
+            Spacer(Modifier.height(22.dp))
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(30.dp),
+                colors = CardDefaults.cardColors(containerColor = AppSurfaceRaised),
+                border = BorderStroke(1.dp, AppOutline),
+            ) {
+                Column(Modifier.padding(22.dp)) {
+                    Text("TOTAL SPENT", color = SecondaryText, style = MaterialTheme.typography.labelSmall)
+                    Spacer(Modifier.height(8.dp))
+                    Text("₦77,450", color = PrimaryText, style = MaterialTheme.typography.displaySmall)
+                    Spacer(Modifier.height(5.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.AutoMirrored.Outlined.TrendingDown, contentDescription = null, tint = IncomeGreen, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("12% less than September", color = IncomeGreen, style = MaterialTheme.typography.labelMedium)
+                    }
+                    Spacer(Modifier.height(22.dp))
+                    SpendingBars()
+                }
+            }
+            Spacer(Modifier.height(24.dp))
+            SectionTitle("Where it went")
+            Spacer(Modifier.height(12.dp))
+            InsightCategory("Food", "₦31,200", "40%", .40f, Icons.Outlined.Restaurant)
+            Spacer(Modifier.height(10.dp))
+            InsightCategory("Transport", "₦18,700", "24%", .24f, Icons.Outlined.DirectionsBus)
+            Spacer(Modifier.height(10.dp))
+            InsightCategory("Data", "₦12,000", "15%", .15f, Icons.Outlined.SimCard)
+            Spacer(Modifier.height(24.dp))
+            SectionTitle("A useful nudge")
+            Spacer(Modifier.height(12.dp))
+            Surface(shape = RoundedCornerShape(22.dp), color = DeepPlum, contentColor = Lavender) {
+                Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Outlined.Insights, contentDescription = null, modifier = Modifier.size(24.dp))
+                    Spacer(Modifier.width(12.dp))
+                    Text("Transport spending is on track to finish ₦3,100 under budget.", style = MaterialTheme.typography.bodyMedium)
+                }
+            }
         }
-        Spacer(Modifier.height(16.dp)); Row(Modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(28.dp)).background(Card)) { Tab("Expense",!income,Modifier.weight(1f)){income=false}; Tab("Income",income,Modifier.weight(1f)){income=true} }
-        Spacer(Modifier.height(23.dp)); Text("AMOUNT",Modifier.fillMaxWidth(),color=Muted,textAlign=TextAlign.Center,fontSize=11.sp,fontWeight=FontWeight.Bold); Spacer(Modifier.height(8.dp))
-        Text("₦"+amount,Modifier.fillMaxWidth(),color=Text,textAlign=TextAlign.Center,fontSize=42.sp,fontWeight=FontWeight.ExtraBold); Spacer(Modifier.height(3.dp)); Text("Tap the amount to edit",Modifier.fillMaxWidth(),color=Muted,textAlign=TextAlign.Center,fontSize=12.sp)
-        Spacer(Modifier.height(19.dp)); Detail(title,income); Spacer(Modifier.height(18.dp)); Text("Pinned",color=Muted,fontSize=12.sp,fontWeight=FontWeight.Bold); Spacer(Modifier.height(10.dp))
-        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) { listOf("Fanta ₦500","Lunch ₦2,500","Bus ₦700").forEach { pin -> Box(Modifier.weight(1f).height(36.dp).clip(RoundedCornerShape(20.dp)).background(Ink).clickable{amount=format(pin.filter(Char::isDigit))},contentAlignment=Alignment.Center){Text(pin,color=Plum,fontSize=10.sp,fontWeight=FontWeight.Bold,maxLines=1)} } }
-        Spacer(Modifier.height(15.dp)); Keypad { amount=changeAmount(amount,it) }; Spacer(Modifier.weight(1f))
-        Box(Modifier.fillMaxWidth().height(56.dp).clip(RoundedCornerShape(30.dp)).background(Plum).clickable(role=Role.Button) { save(Tx(title,category,(if(income)"+₦" else "−₦")+amount,if(income)Kind.INCOME else initial?:Kind.FOOD,income)) },contentAlignment=Alignment.Center) { Text(if(income)"Save income" else "Save expense",color=Ink,fontSize=14.sp,fontWeight=FontWeight.Bold) }
     }
 }
-@Composable private fun Circle(symbol:String,description:String,action:()->Unit) = Box(Modifier.size(48.dp).clip(CircleShape).background(Card).clickable(role=Role.Button,onClick=action).semantics{contentDescription=description},contentAlignment=Alignment.Center){Text(symbol,color=Text,fontSize=33.sp)}
-@Composable private fun Tab(label:String,selected:Boolean,modifier:Modifier,action:()->Unit) = Box(modifier.padding(4.dp).clip(RoundedCornerShape(25.dp)).background(if(selected)Plum else Color.Transparent).clickable(role=Role.Tab,onClick=action),contentAlignment=Alignment.Center){Text(label,color=if(selected)Ink else Muted,fontSize=13.sp,fontWeight=FontWeight.Bold)}
-@Composable private fun Detail(title:String,income:Boolean) = Row(Modifier.fillMaxWidth().height(59.dp).clip(RoundedCornerShape(19.dp)).background(Card).padding(horizontal=13.dp),verticalAlignment=Alignment.CenterVertically) {
-    Box(Modifier.size(38.dp).clip(CircleShape).background(Ink),contentAlignment=Alignment.Center){Symbol(if(income)Kind.INCOME else Kind.FOOD,Plum,18.sp)}; Spacer(Modifier.width(10.dp)); Column {Text("What was this for?",color=Muted,fontSize=11.sp,fontWeight=FontWeight.Bold);Text(title,color=Text,fontSize=14.sp,fontWeight=FontWeight.SemiBold)}
+
+@Composable
+private fun DestinationHeader(title: String, period: String) {
+    Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+        Column {
+            Text(title, color = PrimaryText, style = MaterialTheme.typography.headlineSmall)
+            Text(period, color = SecondaryText, style = MaterialTheme.typography.bodyMedium)
+        }
+        Surface(Modifier.size(48.dp), CircleShape, color = Lavender, contentColor = DeepPlum) {
+            Box(contentAlignment = Alignment.Center) { Text("K", style = MaterialTheme.typography.titleMedium) }
+        }
+    }
 }
-@Composable private fun Keypad(action:(String)->Unit) = Column(verticalArrangement=Arrangement.spacedBy(10.dp)) { listOf("1","2","3","4","5","6","7","8","9",".","0","⌫").chunked(3).forEach { row -> Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)) { row.forEach { key -> Box(Modifier.weight(1f).height(56.dp).clip(RoundedCornerShape(18.dp)).background(Card).clickable(role=Role.Button){action(if(key=="⌫")"delete" else key)}.semantics{contentDescription=if(key=="⌫")"Delete last digit" else key},contentAlignment=Alignment.Center){Text(key,color=Text,fontSize=if(key=="⌫")20.sp else 23.sp,fontWeight=FontWeight.SemiBold)} } } } }
-private fun amountFor(kind:Kind?)=when(kind){Kind.FOOD->"1,200";Kind.BUS->"500";Kind.DATA->"2,000";Kind.INCOME->"85,000";null->"2,800"}
-private fun format(raw:String)=raw.reversed().chunked(3).joinToString(",").reversed().ifBlank{"0"}
-private fun changeAmount(current:String,key:String):String { val raw=current.replace(",",""); val next=when(key){"delete"->raw.dropLast(1);"."->if(raw.contains("."))raw else raw+".";else->if(raw=="0")key else raw+key}; val parts=next.split("."); return if(parts.size>1)format(parts[0])+"."+parts[1] else format(next) }
-@Composable private fun Heading(label:String)=Text(label,color=Text,fontSize=20.sp,fontWeight=FontWeight.Bold)
-@Composable private fun Symbol(kind:Kind,color:Color,size:androidx.compose.ui.unit.TextUnit) { Text(when(kind){Kind.FOOD->"♜";Kind.BUS->"▣";Kind.DATA->"▥";Kind.INCOME->"+"},color=color,fontSize=size,fontWeight=FontWeight.Bold) }
-@Preview(device="spec:width=393dp,height=852dp,dpi=440") @Composable private fun PreviewApp(){WereyBudgetTrackerTheme{App()}}
+
+@Composable
+private fun PlanMenuCard(icon: ImageVector, title: String, subtitle: String, trailing: String) {
+    Card(
+        onClick = {},
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(containerColor = AppSurface),
+    ) {
+        Row(Modifier.height(72.dp).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Surface(Modifier.size(42.dp), CircleShape, color = DeepPlum, contentColor = Lavender) {
+                Box(contentAlignment = Alignment.Center) { Icon(icon, contentDescription = null, modifier = Modifier.size(21.dp)) }
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(title, color = PrimaryText, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                Text(subtitle, color = SecondaryText, style = MaterialTheme.typography.labelSmall)
+            }
+            Text(trailing, color = Lavender, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+private fun BudgetProgressRow(label: String, detail: String, progress: Float, icon: ImageVector) {
+    Surface(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), color = AppSurface) {
+        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, contentDescription = null, tint = Lavender, modifier = Modifier.size(22.dp))
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                    Text(label, color = PrimaryText, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text(((progress * 100).toInt()).toString() + "%", color = Lavender, style = MaterialTheme.typography.labelMedium)
+                }
+                Spacer(Modifier.height(5.dp))
+                Box(Modifier.fillMaxWidth().height(6.dp).clip(CircleShape).background(DeepPlum)) {
+                    Box(Modifier.fillMaxWidth(progress).fillMaxHeight().clip(CircleShape).background(Lavender))
+                }
+                Spacer(Modifier.height(5.dp))
+                Text(detail, color = SecondaryText, style = MaterialTheme.typography.labelSmall)
+            }
+        }
+    }
+}
+
+@Composable
+private fun SpendingBars() {
+    val heights = listOf(32, 48, 38, 68, 53, 78, 61)
+    Row(
+        modifier = Modifier.fillMaxWidth().height(92.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Bottom,
+    ) {
+        heights.forEachIndexed { index, height ->
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(Modifier.width(22.dp).height(height.dp).clip(RoundedCornerShape(8.dp)).background(if (index == 5) Lavender else DeepPlum))
+                Spacer(Modifier.height(5.dp))
+                Text(listOf("M", "T", "W", "T", "F", "S", "S")[index], color = SecondaryText, style = MaterialTheme.typography.labelSmall)
+            }
+        }
+    }
+}
+
+@Composable
+private fun InsightCategory(label: String, amount: String, percent: String, progress: Float, icon: ImageVector) {
+    Surface(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), color = AppSurface) {
+        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Surface(Modifier.size(40.dp), CircleShape, color = DeepPlum, contentColor = Lavender) {
+                Box(contentAlignment = Alignment.Center) { Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp)) }
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                    Text(label, color = PrimaryText, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text(amount, color = PrimaryText, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                }
+                Spacer(Modifier.height(7.dp))
+                Box(Modifier.fillMaxWidth().height(5.dp).clip(CircleShape).background(DeepPlum)) {
+                    Box(Modifier.fillMaxWidth(progress).fillMaxHeight().clip(CircleShape).background(Lavender))
+                }
+            }
+            Spacer(Modifier.width(10.dp))
+            Text(percent, color = Lavender, style = MaterialTheme.typography.labelMedium)
+        }
+    }
+}
+
+@Composable
+private fun HomeBottomBar(
+    selectedDestination: Int,
+    onDestinationSelected: (Int) -> Unit,
+    onAdd: (Kind?) -> Unit,
+) {
+    val destinations = listOf(
+        Triple("Home", Icons.Outlined.Home, Icons.Rounded.Home),
+        Triple("Plan", Icons.Outlined.CalendarMonth, Icons.Rounded.CalendarMonth),
+        Triple("Insights", Icons.Outlined.Insights, Icons.Rounded.Insights),
+    )
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(AppBackground)
+            .navigationBarsPadding()
+            .padding(horizontal = 22.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Surface(
+            modifier = Modifier
+                .weight(1f)
+                .height(64.dp),
+            shape = RoundedCornerShape(32.dp),
+            color = AppSurface,
+            contentColor = SecondaryText,
+            border = BorderStroke(1.dp, AppOutline),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxSize().padding(5.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                destinations.forEachIndexed { index, (label, outlineIcon, selectedIcon) ->
+                    val selected = selectedDestination == index
+                    Surface(
+                        selected = selected,
+                        onClick = { onDestinationSelected(index) },
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
+                        shape = RoundedCornerShape(26.dp),
+                        color = if (selected) DeepPlum else Color.Transparent,
+                        contentColor = if (selected) Lavender else SecondaryText,
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center,
+                        ) {
+                        Icon(
+                            imageVector = if (selected) selectedIcon else outlineIcon,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp),
+                        )
+                            Text(
+                                label,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        FloatingActionButton(
+            onClick = { onAdd(null) },
+            modifier = Modifier.size(58.dp),
+            shape = CircleShape,
+            containerColor = Lavender,
+            contentColor = DeepPlum,
+        ) {
+            Icon(Icons.Rounded.Add, contentDescription = "Add transaction", modifier = Modifier.size(28.dp))
+        }
+    }
+}
+
+@Composable
+private fun AddTransactionScreen(
+    initialKind: Kind?,
+    onBack: () -> Unit,
+    onSave: (Transaction) -> Unit,
+) {
+    var incomeMode by rememberSaveable { mutableStateOf(initialKind == Kind.Income) }
+    var amount by rememberSaveable { mutableStateOf(amountFor(initialKind)) }
+    val title = if (incomeMode) "Salary" else when (initialKind) {
+        Kind.Transport -> "Bus to campus"
+        Kind.Data -> "Mobile data"
+        else -> "Lunch and drink"
+    }
+    val category = if (incomeMode) "Income" else if (initialKind == Kind.Transport) "Transport" else "Food"
+
+    Scaffold(
+        containerColor = AppBackground,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        bottomBar = {
+            Surface(color = AppBackground) {
+                Button(
+                    onClick = {
+                        onSave(
+                            Transaction(
+                                title = title,
+                                category = category,
+                                value = (if (incomeMode) "+₦" else "−₦") + amount,
+                                kind = if (incomeMode) Kind.Income else initialKind ?: Kind.Food,
+                                income = incomeMode,
+                            )
+                        )
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .padding(horizontal = 22.dp, vertical = 12.dp)
+                        .height(56.dp),
+                    shape = RoundedCornerShape(30.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Lavender, contentColor = DeepPlum),
+                ) {
+                    Text(
+                        if (incomeMode) "Save income" else "Save expense",
+                        style = MaterialTheme.typography.labelLarge,
+                    )
+                }
+            }
+        },
+    ) { scaffoldPadding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(scaffoldPadding)
+                .statusBarsPadding(),
+            contentPadding = PaddingValues(start = 22.dp, end = 22.dp, top = 14.dp, bottom = 16.dp),
+        ) {
+            item {
+                AddHeader(onBack)
+                Spacer(Modifier.height(16.dp))
+                TypeSelector(incomeMode = incomeMode, onChange = { incomeMode = it })
+                Spacer(Modifier.height(22.dp))
+                AmountDisplay(amount)
+                Spacer(Modifier.height(18.dp))
+                TransactionDetail(title = title, incomeMode = incomeMode)
+                Spacer(Modifier.height(18.dp))
+                Text("Pinned", color = SecondaryText, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(10.dp))
+                PinnedAmounts { amount = formatAmount(it.filter(Char::isDigit)) }
+                Spacer(Modifier.height(15.dp))
+                Keypad { amount = changeAmount(amount, it) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AddHeader(onBack: () -> Unit) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        FilledIconButton(
+            onClick = onBack,
+            modifier = Modifier.size(48.dp),
+            colors = IconButtonDefaults.filledIconButtonColors(
+                containerColor = AppSurface,
+                contentColor = PrimaryText,
+            ),
+        ) {
+            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
+        }
+        Text(
+            text = "Add transaction",
+            modifier = Modifier.weight(1f),
+            color = PrimaryText,
+            textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.titleLarge,
+        )
+        Spacer(Modifier.size(48.dp))
+    }
+}
+
+@Composable
+private fun TypeSelector(incomeMode: Boolean, onChange: (Boolean) -> Unit) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(28.dp),
+        color = AppSurface,
+    ) {
+        Row(Modifier.height(48.dp).padding(4.dp)) {
+            TypeOption("Expense", selected = !incomeMode, Modifier.weight(1f)) { onChange(false) }
+            TypeOption("Income", selected = incomeMode, Modifier.weight(1f)) { onChange(true) }
+        }
+    }
+}
+
+@Composable
+private fun TypeOption(label: String, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    val background by animateColorAsState(
+        targetValue = if (selected) Lavender else Color.Transparent,
+        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+        label = "$label background",
+    )
+    val foreground by animateColorAsState(
+        targetValue = if (selected) DeepPlum else SecondaryText,
+        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+        label = "$label foreground",
+    )
+    val corner by animateDpAsState(
+        targetValue = if (selected) 24.dp else 12.dp,
+        animationSpec = spring(dampingRatio = .72f, stiffness = 420f),
+        label = "$label shape",
+    )
+    Surface(
+        selected = selected,
+        onClick = onClick,
+        modifier = modifier.fillMaxHeight(),
+        shape = RoundedCornerShape(corner),
+        color = background,
+        contentColor = foreground,
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(label, style = MaterialTheme.typography.labelLarge)
+        }
+    }
+}
+
+@Composable
+private fun AmountDisplay(amount: String) {
+    var previousAmount by remember { mutableStateOf(amount) }
+    val previousDigits = previousAmount.count(Char::isDigit)
+    val currentDigits = amount.count(Char::isDigit)
+    val animateNewDigit = currentDigits > previousDigits
+    SideEffect { previousAmount = amount }
+
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+        Text("AMOUNT", color = SecondaryText, style = MaterialTheme.typography.labelSmall)
+        Spacer(Modifier.height(7.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "₦" + amount.dropLast(1),
+                color = PrimaryText,
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.displaySmall,
+            )
+            ExpressiveDigitReveal(
+                digit = amount.lastOrNull() ?: '0',
+                eventKey = amount,
+                animate = animateNewDigit,
+            )
+        }
+        Spacer(Modifier.height(3.dp))
+        Text("Use the keypad to edit", color = SecondaryText, style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+@Composable
+private fun ExpressiveDigitReveal(digit: Char, eventKey: String, animate: Boolean) {
+    var showDigit by remember(eventKey) { mutableStateOf(!animate) }
+    LaunchedEffect(eventKey) {
+        if (animate) {
+            delay(115)
+            showDigit = true
+        }
+    }
+    val shapeScale by animateFloatAsState(
+        targetValue = if (showDigit) 0f else 1f,
+        animationSpec = spring(dampingRatio = .7f, stiffness = 560f),
+        label = "typed digit shape",
+    )
+    val digitScale by animateFloatAsState(
+        targetValue = if (showDigit) 1f else .55f,
+        animationSpec = spring(dampingRatio = .62f, stiffness = 520f),
+        label = "typed digit scale",
+    )
+    val digitAlpha by animateFloatAsState(
+        targetValue = if (showDigit) 1f else 0f,
+        animationSpec = tween(durationMillis = 150, delayMillis = if (animate) 45 else 0),
+        label = "typed digit alpha",
+    )
+    val shape = when (digit.digitToIntOrNull()?.rem(3)) {
+        0 -> RoundedCornerShape(topStart = 5.dp, topEnd = 18.dp, bottomEnd = 7.dp, bottomStart = 15.dp)
+        1 -> RoundedCornerShape(topStart = 17.dp, topEnd = 6.dp, bottomEnd = 16.dp, bottomStart = 5.dp)
+        else -> RoundedCornerShape(topStart = 7.dp, topEnd = 15.dp, bottomEnd = 5.dp, bottomStart = 18.dp)
+    }
+
+    Box(
+        modifier = Modifier.width(29.dp).height(48.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            Modifier
+                .size(31.dp)
+                .graphicsLayer {
+                    scaleX = shapeScale
+                    scaleY = shapeScale
+                    rotationZ = (1f - shapeScale) * 18f
+                    alpha = shapeScale
+                }
+                .clip(shape)
+                .background(Lavender)
+        )
+        Text(
+            text = digit.toString(),
+            color = PrimaryText,
+            textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.displaySmall,
+            modifier = Modifier.graphicsLayer {
+                scaleX = digitScale
+                scaleY = digitScale
+                alpha = digitAlpha
+            },
+        )
+    }
+}
+
+@Composable
+private fun TransactionDetail(title: String, incomeMode: Boolean) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        color = AppSurfaceRaised,
+        border = BorderStroke(1.dp, AppOutline),
+    ) {
+        Row(
+            modifier = Modifier.height(60.dp).padding(horizontal = 13.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Surface(
+                modifier = Modifier.size(38.dp),
+                shape = CircleShape,
+                color = DeepPlum,
+                contentColor = Lavender,
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        if (incomeMode) Icons.Rounded.Payments else Icons.AutoMirrored.Outlined.ReceiptLong,
+                        contentDescription = null,
+                        modifier = Modifier.size(19.dp),
+                    )
+                }
+            }
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text("What was this for?", color = SecondaryText, style = MaterialTheme.typography.labelSmall)
+                Text(title, color = PrimaryText, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+@Composable
+private fun PinnedAmounts(onPick: (String) -> Unit) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        listOf("Fanta ₦500", "Lunch ₦2,500", "Bus ₦700").forEach { label ->
+            Surface(
+                onClick = { onPick(label) },
+                modifier = Modifier.weight(1f).height(40.dp),
+                shape = RoundedCornerShape(20.dp),
+                color = DeepPlum,
+                contentColor = Lavender,
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(label, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, maxLines = 1)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun Keypad(onKey: (String) -> Unit) {
+    val keys = listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "delete")
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        keys.chunked(3).forEach { row ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                row.forEach { key ->
+                    KeypadButton(key = key, modifier = Modifier.weight(1f)) { onKey(key) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun KeypadButton(key: String, modifier: Modifier, onClick: () -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) .96f else 1f,
+        animationSpec = if (pressed) tween(90) else spring(dampingRatio = .7f, stiffness = 380f),
+        label = "key press",
+    )
+    val corner by animateDpAsState(
+        targetValue = if (pressed) 16.dp else 28.dp,
+        animationSpec = if (pressed) tween(90) else tween(280, easing = FastOutSlowInEasing),
+        label = "key shape",
+    )
+    val containerColor by animateColorAsState(
+        targetValue = if (pressed) Lavender else AppSurface,
+        animationSpec = if (pressed) tween(90) else tween(280),
+        label = "key color",
+    )
+    val contentColor by animateColorAsState(
+        targetValue = if (pressed) DeepPlum else PrimaryText,
+        animationSpec = if (pressed) tween(90) else tween(280),
+        label = "key content color",
+    )
+    Button(
+        onClick = onClick,
+        modifier = modifier
+            .height(56.dp)
+            .graphicsLayer { scaleX = scale; scaleY = scale },
+        interactionSource = interactionSource,
+        shape = RoundedCornerShape(corner),
+        contentPadding = PaddingValues(0.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = containerColor, contentColor = contentColor),
+    ) {
+        if (key == "delete") {
+            Icon(Icons.Outlined.DeleteOutline, contentDescription = "Delete last digit")
+        } else {
+            Text(key, style = MaterialTheme.typography.titleLarge)
+        }
+    }
+}
+
+@Composable
+private fun SectionTitle(text: String) {
+    Text(text, color = PrimaryText, style = MaterialTheme.typography.titleLarge)
+}
+
+private fun Kind.icon(): ImageVector = when (this) {
+    Kind.Food -> Icons.Outlined.Restaurant
+    Kind.Transport -> Icons.Outlined.DirectionsBus
+    Kind.Data -> Icons.Outlined.SimCard
+    Kind.Income -> Icons.Rounded.Payments
+}
+
+private fun amountFor(kind: Kind?): String = when (kind) {
+    Kind.Food -> "1,200"
+    Kind.Transport -> "500"
+    Kind.Data -> "2,000"
+    Kind.Income -> "85,000"
+    null -> "2,800"
+}
+
+private fun formatAmount(raw: String): String =
+    raw.reversed().chunked(3).joinToString(",").reversed().ifBlank { "0" }
+
+private fun changeAmount(current: String, key: String): String {
+    val raw = current.replace(",", "")
+    val next = when (key) {
+        "delete" -> raw.dropLast(1)
+        "." -> if (raw.contains(".")) raw else "$raw."
+        else -> if (raw == "0") key else raw + key
+    }
+    val parts = next.split(".")
+    return if (parts.size > 1) formatAmount(parts[0]) + "." + parts[1] else formatAmount(next)
+}
+
+@Preview(device = "spec:width=393dp,height=852dp,dpi=440")
+@Composable
+private fun BudgetAppPreview() {
+    WereyBudgetTrackerTheme { BudgetApp() }
+}
